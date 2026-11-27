@@ -327,7 +327,7 @@ input[type=range]{width:100%;margin:14px 0 4px;accent-color:#ffc9e0;height:28px}
       <div class="ticks"><span>12시간 전</span><button class="ghost" id="nowBtn" type="button">지금으로</button><span>12시간 뒤</span></div>
     </section>
 
-    <p class="note">하늘 지도는 가운데가 머리 위, 바깥 원이 지평선이에요. 점선은 앞뒤 12시간 동안 달이 지나는 길이고, 폰 센서가 켜지면 지도가 내가 보는 방향으로 돌아가요. 월출·월몰은 몇 분 차이가 날 수 있고 구름은 계산에 넣지 않았어요. (앱 버전 9)</p>
+    <p class="note">하늘 지도는 가운데가 머리 위, 바깥 원이 지평선이에요. 점선은 앞뒤 12시간 동안 달이 지나는 길이고, 폰 센서가 켜지면 지도가 내가 보는 방향으로 돌아가요. 월출·월몰은 몇 분 차이가 날 수 있고 구름은 계산에 넣지 않았어요. (앱 버전 10)</p>
   </main>
 </div>
 
@@ -347,6 +347,7 @@ input[type=range]{width:100%;margin:14px 0 4px;accent-color:#ffc9e0;height:28px}
   <div class="ar-bottom"><button class="ghost" id="arAim" type="button" style="background:rgba(18,13,51,.8)" hidden>달 쪽으로 돌리기</button>
     <button class="ghost" id="camBtn" type="button" style="background:rgba(18,13,51,.8)">카메라 켜기</button>
     <button class="ghost" id="arClear" type="button" style="background:rgba(18,13,51,.8)">기록 지우기</button>
+    <button class="ghost" id="nightBtn" type="button" style="background:rgba(18,13,51,.8)" hidden>야간 모드: 끔</button>
     <button class="ghost" id="recBtn" type="button" style="background:rgba(18,13,51,.8)">능선 기록 시작</button></div>
 </div>
 <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
@@ -871,6 +872,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&AR.on) closeAR();})
 
 function proj(v,B){const z=dot(v,B.f); if(z<=0.02) return null; return [AR.W/2+AR.f*dot(v,B.r)/z,AR.H/2-AR.f*dot(v,B.u)/z,z];}
 function drawMoonDisc(g,x,y,R,m,south){
+  if(SKY.cam){ g.save(); g.shadowColor='#ffd34d'; g.shadowBlur=10; g.fillStyle='#ffd34d'; g.beginPath(); g.arc(x,y,6,0,6.283); g.fill(); g.restore(); return; }
   const gl=g.createRadialGradient(x,y,R*.6,x,y,R*4.2);
   gl.addColorStop(0,`rgba(255,233,176,${.25+.4*m.frac})`); gl.addColorStop(1,'rgba(255,208,224,0)');
   g.fillStyle=gl; g.beginPath(); g.arc(x,y,R*4.2,0,6.283); g.fill();
@@ -1114,13 +1116,25 @@ async function camOn(){
   try{
     const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
     SKY.stream=st; SKY.cam=true; const v=$('arVid'); v.srcObject=st; v.hidden=false; try{await v.play();}catch(e){}
-    $('camBtn').textContent='카메라 끄기';
+    $('camBtn').textContent='카메라 끄기'; $('nightBtn').hidden=false; applyNight();
   }catch(e){toast('카메라를 켤 수 없어요. 카메라 권한을 허용해 주세요.');}
 }
 function camOff(){
   if(SKY.stream){SKY.stream.getTracks().forEach(t=>t.stop());} SKY.stream=null; SKY.cam=false;
-  const v=$('arVid'); v.srcObject=null; v.hidden=true; $('camBtn').textContent='카메라 켜기';
+  const v=$('arVid'); v.srcObject=null; v.hidden=true; $('camBtn').textContent='카메라 켜기'; $('nightBtn').hidden=true; $('arVid').style.filter='';
 }
+const NIGHT={lv:0,names:['끔','밝게','아주 밝게'],f:['','brightness(2.2) contrast(1.12) saturate(.85)','brightness(3.8) contrast(1.25) saturate(.7)']};
+function applyNight(){
+  $('arVid').style.filter=NIGHT.f[NIGHT.lv]; $('nightBtn').textContent='야간 모드: '+NIGHT.names[NIGHT.lv];
+  try{
+    const tr=SKY.stream&&SKY.stream.getVideoTracks()[0]; if(!tr||!tr.getCapabilities) return;
+    const cap=tr.getCapabilities(), adv={};
+    if(cap.exposureMode&&cap.exposureMode.includes('continuous')) adv.exposureMode='continuous';
+    if(cap.exposureCompensation) adv.exposureCompensation=NIGHT.lv===0?0:(NIGHT.lv===1?cap.exposureCompensation.max*0.6:cap.exposureCompensation.max);
+    if(Object.keys(adv).length) tr.applyConstraints({advanced:[adv]}).catch(()=>{});
+  }catch(e){}
+}
+$('nightBtn').onclick=()=>{NIGHT.lv=(NIGHT.lv+1)%3; applyNight();};
 function recStop(){ if(!SKY.rec) return; SKY.rec=false; $('recBtn').textContent='능선 기록 시작'; skySave(); renderSky(); }
 $('camBtn').onclick=()=>{SKY.cam?camOff():camOn();};
 $('recBtn').onclick=()=>{
