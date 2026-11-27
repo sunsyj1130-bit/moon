@@ -146,7 +146,7 @@ input[type=range]{width:100%;margin:14px 0 4px;accent-color:#ffc9e0;height:28px}
 #arVid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 #arVid[hidden]{display:none}
 .ar-bottom{flex-wrap:wrap;gap:8px}
-.ar-bottom .ghost{padding:9px 14px;font-size:14px}
+.ar-bottom .ghost{padding:8px 11px;font-size:13px;white-space:nowrap}
 .arlaunch{margin:14px 20px 0;width:calc(100% - 40px)}
 @media (prefers-reduced-motion:reduce){
   .aurora i,.ring,.glow-btn{animation:none}
@@ -1041,7 +1041,7 @@ function frameAR(t){
   if(SKY.rec&&AR.sensor){const bi=Math.round(viewAz)%360, v=Math.round(clamp(viewAlt,-5,85)*10)/10; if(SKY.bins[bi]!==v){SKY.bins[bi]=v; skyCount();}}
 
   // 나침반 (아래쪽)
-  const kx=W-66, ky=H-196, kr=46;
+  const kx=W-66, ky=H-214, kr=46;
   g.fillStyle='rgba(18,13,51,.78)'; g.strokeStyle='rgba(255,226,170,.4)'; g.lineWidth=1.5; g.beginPath(); g.arc(kx,ky,kr,0,6.283); g.fill(); g.stroke();
   const pos=(deg,r)=>[kx+Math.sin(deg*rad)*r,ky-Math.cos(deg*rad)*r];
   g.font='700 15px "Gowun Batang", serif';
