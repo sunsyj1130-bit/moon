@@ -327,7 +327,7 @@ input[type=range]{width:100%;margin:14px 0 4px;accent-color:#ffc9e0;height:28px}
       <div class="ticks"><span>12시간 전</span><button class="ghost" id="nowBtn" type="button">지금으로</button><span>12시간 뒤</span></div>
     </section>
 
-    <p class="note">하늘 지도는 가운데가 머리 위, 바깥 원이 지평선이에요. 점선은 앞뒤 12시간 동안 달이 지나는 길이고, 폰 센서가 켜지면 지도가 내가 보는 방향으로 돌아가요. 월출·월몰은 몇 분 차이가 날 수 있고 구름은 계산에 넣지 않았어요.</p>
+    <p class="note">하늘 지도는 가운데가 머리 위, 바깥 원이 지평선이에요. 점선은 앞뒤 12시간 동안 달이 지나는 길이고, 폰 센서가 켜지면 지도가 내가 보는 방향으로 돌아가요. 월출·월몰은 몇 분 차이가 날 수 있고 구름은 계산에 넣지 않았어요. (앱 버전 9)</p>
   </main>
 </div>
 
@@ -1138,7 +1138,7 @@ let deferredInstall=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault(); deferredInstall=e; $('installBtn').hidden=false;});
 window.addEventListener('appinstalled',()=>{$('installBtn').hidden=true; deferredInstall=null;});
 $('installBtn').onclick=async()=>{ if(!deferredInstall) return; deferredInstall.prompt(); try{await deferredInstall.userChoice;}catch(e){} deferredInstall=null; $('installBtn').hidden=true; };
-try{ if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js'); }catch(e){}
+try{ if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js'); if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('controllerchange',()=>{ if(!window.__rl){window.__rl=1; location.reload();} }); }catch(e){}
 /* 시작 */
 function start(d){
   if(d&&d.loc&&isFinite(d.loc.lat)) loc=d.loc;
