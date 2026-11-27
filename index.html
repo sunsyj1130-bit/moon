@@ -327,7 +327,7 @@ input[type=range]{width:100%;margin:14px 0 4px;accent-color:#ffc9e0;height:28px}
       <div class="ticks"><span>12시간 전</span><button class="ghost" id="nowBtn" type="button">지금으로</button><span>12시간 뒤</span></div>
     </section>
 
-    <p class="note">하늘 지도는 가운데가 머리 위, 바깥 원이 지평선이에요. 점선은 앞뒤 12시간 동안 달이 지나는 길이고, 폰 센서가 켜지면 지도가 내가 보는 방향으로 돌아가요. 월출·월몰은 몇 분 차이가 날 수 있고 구름은 계산에 넣지 않았어요. (앱 버전 12)</p>
+    <p class="note">하늘 지도는 가운데가 머리 위, 바깥 원이 지평선이에요. 점선은 앞뒤 12시간 동안 달이 지나는 길이고, 폰 센서가 켜지면 지도가 내가 보는 방향으로 돌아가요. 월출·월몰은 몇 분 차이가 날 수 있고 구름은 계산에 넣지 않았어요. (앱 버전 13)</p>
   </main>
 </div>
 
@@ -945,13 +945,13 @@ function frameAR(t){
   // 달이 지나는 길
   g.fillStyle='rgba(255,230,168,.7)';
   g.textAlign='center'; g.textBaseline='middle';
-  for(const q of AR.trail){ if(!q||SKY.rec) continue; const p=proj(q.v,B); if(!p) continue;
+  for(const q of AR.trail){ if(!q||AR.simple||SKY.rec) continue; const p=proj(q.v,B); if(!p) continue;
     const hr=timeOf(q.t,loc.tz).endsWith(':00');
     g.beginPath(); g.arc(p[0],p[1],hr?3.6:1.8,0,6.283); g.fill();
     if(hr){ g.font='700 14px "Gowun Dodum", sans-serif'; g.fillStyle='#ffe6a8'; g.fillText(timeOf(q.t,loc.tz),p[0],p[1]-15); g.fillStyle='rgba(255,216,138,.85)'; }
   }
   // 능선을 넘는 순간
-  const nx=SKY.rec?null:SKY.next;
+  const nx=(AR.simple||SKY.rec)?null:SKY.next;
   if(nx){
     const sa=skyAlt(nx.az), pr=proj(enu(nx.az,sa),B);
     if(pr){
@@ -992,7 +992,7 @@ function frameAR(t){
   // 방위 글자
   const names=['북','북동','동','남동','남','남서','서','북서'];
   g.textAlign='center'; g.textBaseline='middle';
-  for(let a=0;a<360&&!SKY.rec;a+=15){
+  for(let a=0;a<360&&!AR.simple&&!SKY.rec;a+=15){
     const p=proj(enu(a,0),B); if(!p) continue;
     const big=a%90===0, mid=a%45===0;
     g.strokeStyle='rgba(255,226,170,.7)'; g.lineWidth=big?2:1; g.beginPath(); g.moveTo(p[0],p[1]); g.lineTo(p[0],p[1]-(big?12:mid?9:5)); g.stroke();
@@ -1028,7 +1028,7 @@ function frameAR(t){
   // 조준점이 달 길 위에 있으면 그 시각
   {
     let bi=-1,bc=-2; AR.trail.forEach((q,i)=>{ if(!q) return; const c=dot(q.v,vf); if(c>bc){bc=c;bi=i;} });
-    if(bi>=0&&bc>Math.cos(9*rad)&&!SKY.rec){
+    if(bi>=0&&bc>Math.cos(9*rad)&&!AR.simple&&!SKY.rec){
       let bt=AR.trail[bi].t, bb=-2, ba=0, bz=0;
       for(let k=-10;k<=10;k++){const tt=AR.trail[bi].t+k*60000, p=moonAt(tt,loc.lat,loc.lng), c=dot(enu(p.az,p.alt),vf); if(c>bb){bb=c;bt=tt;ba=p.alt;bz=p.az;}}
       const hid=ba+refraction(ba)+0.27<skyAlt(bz);
@@ -1066,6 +1066,7 @@ function frameAR(t){
   }
   if(!SKY.rec&&SKY.next) txt+=`<br>다음 달 등장 <b>${timeOf(SKY.next.t,loc.tz)}</b> (${dayWord(dayDiff(SKY.next.t,Date.now(),loc.tz))}, 초록 점선 자리)`;
   if(SKY.rec) txt=`<b>능선 기록 중</b> · 동그라미를 건물·산 꼭대기선에 맞추고 천천히 돌리세요 (${SKY.n}°/360°)`;
+  $('arHud').style.visibility=(AR.simple&&!SKY.rec)?'hidden':'';
   if(txt!==AR.last){$('arHud').innerHTML=txt; AR.last=txt;}
 }
 
@@ -1126,7 +1127,7 @@ function camOff(){
   if(SKY.stream){SKY.stream.getTracks().forEach(t=>t.stop());} SKY.stream=null; SKY.cam=false;
   const v=$('arVid'); v.srcObject=null; v.hidden=true; $('camBtn').textContent='카메라 켜기'; $('nightBtn').hidden=true; $('arVid').style.filter='';
 }
-$('simpleBtn').onclick=()=>{AR.simple=!AR.simple; $('simpleBtn').textContent='간단 보기: '+(AR.simple?'켬':'끔'); toast(AR.simple?'별자리·달 그림을 숨겼어요. 수평선과 달 길만 보여요.':'별자리·달 그림을 다시 보여줘요.');};
+$('simpleBtn').onclick=()=>{AR.simple=!AR.simple; $('simpleBtn').textContent='간단 보기: '+(AR.simple?'켬':'끔'); toast(AR.simple?'수평선과 기록한 능선만 보여요.':'다시 모두 보여줘요.');};
 const NIGHT={lv:0,names:['끔','밝게','아주 밝게'],f:['','brightness(2.2) contrast(1.12) saturate(.85)','brightness(3.8) contrast(1.25) saturate(.7)']};
 function applyNight(){
   $('arVid').style.filter=NIGHT.f[NIGHT.lv]; $('nightBtn').textContent='야간 모드: '+NIGHT.names[NIGHT.lv];
