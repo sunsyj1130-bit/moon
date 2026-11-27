@@ -895,7 +895,7 @@ function frameAR(t){
   const now=Date.now()+offsetMin*60000;
   if(t-AR.mt>1000){AR.m=moonAt(now,loc.lat,loc.lng); AR.rs=riseSet(now,loc.lat,loc.lng); AR.mt=t;}
   if(t-AR.tt>20000){
-    AR.trail=[]; for(let i=-72;i<=72;i++){const p=moonAt(now+i*10*60000,loc.lat,loc.lng); AR.trail.push(p.alt>=0?enu(p.az,p.alt):null);} AR.tt=t;
+    AR.trail=[]; const t00=Math.floor(now/600000)*600000; for(let i=-72;i<=72;i++){const tt=t00+i*600000, p=moonAt(tt,loc.lat,loc.lng); AR.trail.push(p.alt>=-1?{v:enu(p.az,p.alt),t:tt,az:p.az,alt:p.alt}:null);} AR.tt=t;
   }
   const m=AR.m, tgt=arTarget(), tv=enu(tgt.az,tgt.alt), st=document.documentElement.style;
   const s1=st.getPropertyValue('--sky1')||'#0f0c33', s3=st.getPropertyValue('--sky3')||'#6b3f86';
@@ -937,7 +937,24 @@ function frameAR(t){
   }
   // 달이 지나는 길
   g.fillStyle='rgba(255,230,168,.7)';
-  for(const v of AR.trail){ if(!v) continue; const p=proj(v,B); if(p){g.beginPath(); g.arc(p[0],p[1],1.8,0,6.283); g.fill();} }
+  g.textAlign='center'; g.textBaseline='middle';
+  for(const q of AR.trail){ if(!q) continue; const p=proj(q.v,B); if(!p) continue;
+    const hr=timeOf(q.t,loc.tz).endsWith(':00');
+    g.beginPath(); g.arc(p[0],p[1],hr?3.6:1.8,0,6.283); g.fill();
+    if(hr){ g.font='700 14px "Gowun Dodum", sans-serif'; g.fillStyle='#ffe6a8'; g.fillText(timeOf(q.t,loc.tz),p[0],p[1]-15); g.fillStyle='rgba(255,216,138,.85)'; }
+  }
+  // 능선을 넘는 순간
+  const nx=SKY.next;
+  if(nx){
+    const sa=skyAlt(nx.az), pr=proj(enu(nx.az,sa),B);
+    if(pr){
+      g.save(); g.strokeStyle='#7ff0d0'; g.lineWidth=2.5; g.setLineDash([5,5]); g.beginPath(); g.arc(pr[0],pr[1],30,0,6.283); g.stroke(); g.setLineDash([]); g.restore();
+      const pm=proj(enu(nx.az,nx.alt),B); if(pm){ g.save(); g.globalAlpha=.55; drawMoonDisc(g,pm[0],pm[1],24,moonAt(nx.t,loc.lat,loc.lng),south); g.restore(); }
+      g.font='700 15px "Gowun Dodum", sans-serif'; g.fillStyle='#b9ffe9'; g.fillText(timeOf(nx.t,loc.tz)+' 능선 넘기 시작',pr[0],pr[1]-44);
+      if(nx.tf){ g.font='13px "Gowun Dodum", sans-serif'; g.fillText(timeOf(nx.tf,loc.tz)+' 달 모양이 다 보여요',pr[0],pr[1]-26); }
+      g.fillStyle='rgba(255,216,138,.85)';
+    }
+  }
 
   // 달 (땅 아래면 아래의 땅이 가려요)
   const mp=proj(enu(m.az,m.alt),B), R=24;
@@ -1001,6 +1018,20 @@ function frameAR(t){
     g.save(); g.translate(x,y); g.rotate(ang); g.fillStyle='#ffd88a'; g.shadowColor='#ffd88a'; g.shadowBlur=14;
     g.beginPath(); g.moveTo(16,0); g.lineTo(-10,-14); g.lineTo(-4,0); g.lineTo(-10,14); g.closePath(); g.fill(); g.restore();
   }
+  // 조준점이 달 길 위에 있으면 그 시각
+  {
+    let bi=-1,bc=-2; AR.trail.forEach((q,i)=>{ if(!q) return; const c=dot(q.v,vf); if(c>bc){bc=c;bi=i;} });
+    if(bi>=0&&bc>Math.cos(9*rad)){
+      let bt=AR.trail[bi].t, bb=-2, ba=0, bz=0;
+      for(let k=-10;k<=10;k++){const tt=AR.trail[bi].t+k*60000, p=moonAt(tt,loc.lat,loc.lng), c=dot(enu(p.az,p.alt),vf); if(c>bb){bb=c;bt=tt;ba=p.alt;bz=p.az;}}
+      const hid=ba+refraction(ba)+0.27<skyAlt(bz);
+      g.textAlign='center'; g.textBaseline='middle'; g.font='700 18px "Gowun Batang", serif';
+      const lab=timeOf(bt,loc.tz)+(dayWord(dayDiff(bt,Date.now(),loc.tz))!=='오늘'?' ('+dayWord(dayDiff(bt,Date.now(),loc.tz))+')':''), sub=hid?'이 시각엔 능선에 가려져요':'이 시각엔 달이 보여요';
+      g.fillStyle='rgba(18,13,51,.82)'; g.fillRect(cx-96,cy+34,192,50);
+      g.fillStyle='#ffe6a8'; g.fillText(lab+' 에 달이 여기',cx,cy+50);
+      g.font='13px "Gowun Dodum", sans-serif'; g.fillStyle=hid?'#f6adc4':'#b9ffe9'; g.fillText(sub,cx,cy+72);
+    }
+  }
   // 가운데 조준점
   g.strokeStyle=aligned?'#ffd88a':'rgba(255,243,216,.5)'; g.lineWidth=aligned?3:1.5; g.beginPath(); g.arc(cx,cy,aligned?22:10,0,6.283); g.stroke();
   if(aligned&&!AR.near){try{navigator.vibrate&&navigator.vibrate(40);}catch(e){}}
@@ -1026,6 +1057,7 @@ function frameAR(t){
     const rt=AR.rs&&AR.rs.rise?timeOf(AR.rs.rise,loc.tz):'';
     txt=`달은 아직 땅 아래예요. ${rt?`<b>${rt}</b>쯤 `:''}<b>${dirName(tgt.az)} ${Math.round(tgt.az)}°</b>에서 떠올라요. ${aligned?'<b>바로 그 방향이에요!</b>':`<b>${dAz>=0?'오른쪽':'왼쪽'}으로 ${as}°</b> 돌려 보세요`}`;
   }
+  if(!SKY.rec&&SKY.next) txt+=`<br>다음 달 등장 <b>${timeOf(SKY.next.t,loc.tz)}</b> (${dayWord(dayDiff(SKY.next.t,Date.now(),loc.tz))}, 초록 점선 자리)`;
   if(SKY.rec) txt=`<b>능선 기록 중</b> · 동그라미를 건물·산 꼭대기선에 맞추고 천천히 돌리세요 (${SKY.n}°/360°)`;
   if(txt!==AR.last){$('arHud').innerHTML=txt; AR.last=txt;}
 }
@@ -1051,7 +1083,11 @@ function skyEvents(){
     const t=t0+i*60000, m=moonAt(t,loc.lat,loc.lng);
     const vis=m.alt>-1.5&&(m.alt+refraction(m.alt)+0.27)>=skyAlt(m.az);
     if(prev===null){ if(vis) out.push({t,type:'now',az:m.az,alt:m.alt}); }
-    else if(vis!==prev) out.push({t,type:vis?'show':'hide',az:m.az,alt:m.alt});
+    else if(vis!==prev){
+      const e={t,type:vis?'show':'hide',az:m.az,alt:m.alt};
+      if(vis){ for(let k=1;k<=40;k++){const tt=t+k*30000, q=moonAt(tt,loc.lat,loc.lng); if(q.alt+refraction(q.alt)-0.27>=skyAlt(q.az)){e.tf=tt;break;}} }
+      out.push(e);
+    }
     prev=vis;
   }
   return out;
@@ -1062,11 +1098,11 @@ function renderSky(){
   let warn='';
   if(n>0&&SKY.at&&(Math.abs(SKY.at.lat-loc.lat)>0.01||Math.abs(SKY.at.lng-loc.lng)>0.01)) warn=' (기록한 곳과 지금 위치가 달라요)';
   info.textContent=n>0?`기록한 능선 ${n}°분을 반영해서, 달이 건물·산 위로 나타나는 시각이에요.${warn} 기록 안 한 방향은 평지로 계산해요.`:'아직 능선을 기록하지 않았어요. 지금은 평평한 땅을 기준으로 계산했어요. 보고 싶은 자리에 서서 카메라로 건물·산 꼭대기선을 따라 기록하면 그 자리에서 달이 보이는 시각을 알려줘요.';
-  const ev=skyEvents(); let h='';
+  const ev=skyEvents(); SKY.next=ev.find(e=>e.type==='show')||null; let h='';
   for(const e of ev){
     const w=dayWord(dayDiff(e.t,Date.now(),loc.tz)), tm=timeOf(e.t,loc.tz), dir=`${dirName(e.az)} ${Math.round(e.az)}°`;
     if(e.type==='now') h+=`<li><b>지금</b><span>달이 보이는 중이에요<br>${dir}</span></li>`;
-    else if(e.type==='show') h+=`<li><b>${tm}</b><span>${w} · 달이 나타나요<br>${dir} · ${lightWord(e.t)}</span></li>`;
+    else if(e.type==='show') h+=`<li><b>${tm}</b><span>${w} · 능선을 넘기 시작해요<br>${e.tf?timeOf(e.tf,loc.tz)+'에 달 모양이 다 보여요<br>':''}${dir} · ${lightWord(e.t)}</span></li>`;
     else h+=`<li><b>${tm}</b><span>${w} · 다시 가려져요<br>${dir}</span></li>`;
   }
   ol.innerHTML=h||'<li><span>앞으로 3일 동안 이 자리에서는 달이 보이지 않아요.</span></li>';
