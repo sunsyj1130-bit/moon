@@ -345,6 +345,7 @@ input[type=range]{width:100%;margin:14px 0 4px;accent-color:#ffc9e0;height:28px}
   </div>
   <div class="ar-bottom"><button class="ghost" id="arAim" type="button" style="background:rgba(18,13,51,.8)" hidden>달 쪽으로 돌리기</button>
     <button class="ghost" id="camBtn" type="button" style="background:rgba(18,13,51,.8)">카메라 켜기</button>
+    <button class="ghost" id="arClear" type="button" style="background:rgba(18,13,51,.8)">기록 지우기</button>
     <button class="ghost" id="recBtn" type="button" style="background:rgba(18,13,51,.8)">능선 기록 시작</button></div>
 </div>
 <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
@@ -1128,6 +1129,7 @@ $('recBtn').onclick=()=>{
   toast('가운데 동그라미를 건물·산 꼭대기선에 맞추고, 천천히 왼쪽에서 오른쪽으로 돌려 보세요.');
 };
 $('skyRec').onclick=()=>{openAR(); camOn();};
+$('arClear').onclick=()=>{SKY.rec=false; $('recBtn').textContent='능선 기록 시작'; SKY.bins.fill(null); SKY.n=0; skySave(); renderSky(); toast('기록을 지웠어요. 다시 기록해 보세요.');};
 $('skyClear').onclick=()=>{SKY.bins.fill(null); skySave(); renderSky(); toast('기록을 지웠어요.');};
 
 /* 앱 설치(PWA) */
