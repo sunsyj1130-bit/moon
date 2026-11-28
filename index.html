@@ -318,6 +318,16 @@ input[type=range]{width:100%;margin:14px 0 4px;accent-color:#ffc9e0;height:28px}
       <div class="mini glass"><span class="k">거리</span><b id="distV">-</b><span class="s" id="distS"></span></div>
     </section>
 
+    <section class="sky glass" id="stlCard" aria-label="스타링크 보기">
+      <h3>스타링크 보기</h3>
+      <p id="stlInfo"></p>
+      <p id="stlWx"></p>
+      <ol id="stlDays"></ol>
+      <ol id="stlList"></ol>
+      <button class="glow-btn" id="stlFind" type="button">지나가는 시간 찾기</button>
+      <div class="row" style="justify-content:center"><button class="ghost" id="stlAr" type="button">3D 센서 화면으로 보기</button></div>
+    </section>
+
     <section class="sky glass" id="skyCard" aria-label="내 자리에서 달 보기">
       <h3>내 자리에서 달 보기</h3>
       <p id="skyInfo"></p>
@@ -327,7 +337,7 @@ input[type=range]{width:100%;margin:14px 0 4px;accent-color:#ffc9e0;height:28px}
     </section>
 
 
-    <p class="note">하늘 지도는 가운데가 머리 위, 바깥 원이 지평선이에요. 점선은 앞뒤 12시간 동안 달이 지나는 길이고, 폰 센서가 켜지면 지도가 내가 보는 방향으로 돌아가요. 월출·월몰은 몇 분 차이가 날 수 있고 구름은 계산에 넣지 않았어요. (앱 버전 16) 방문 수만 익명으로 세고, 위치·능선 기록은 내 폰에만 저장돼요.</p>
+    <p class="note">하늘 지도는 가운데가 머리 위, 바깥 원이 지평선이에요. 점선은 앞뒤 12시간 동안 달이 지나는 길이고, 폰 센서가 켜지면 지도가 내가 보는 방향으로 돌아가요. 월출·월몰은 몇 분 차이가 날 수 있고 구름은 계산에 넣지 않았어요. (앱 버전 17) 방문 수만 익명으로 세고, 위치·능선 기록은 내 폰에만 저장돼요.</p>
   </main>
 </div>
 
@@ -345,6 +355,7 @@ input[type=range]{width:100%;margin:14px 0 4px;accent-color:#ffc9e0;height:28px}
     </div>
   </div>
   <div class="ar-bottom"><button class="ghost" id="arAim" type="button" style="background:rgba(18,13,51,.8)" hidden>달 쪽으로 돌리기</button>
+    <button class="ghost" id="satBtn" type="button" style="background:rgba(18,13,51,.8)" hidden>스타링크: 끔</button>
     <button class="ghost" id="camBtn" type="button" style="background:rgba(18,13,51,.8)">카메라 켜기</button>
     <button class="ghost" id="arClear" type="button" style="background:rgba(18,13,51,.8)">기록 지우기</button>
     <button class="ghost" id="nightBtn" type="button" style="background:rgba(18,13,51,.8)" hidden>야간 모드: 끔</button>
@@ -366,6 +377,7 @@ input[type=range]{width:100%;margin:14px 0 4px;accent-color:#ffc9e0;height:28px}
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="./sat.min.js"></script>
 <script>
 /*ASTRO*/
 const rad=Math.PI/180, dayMs=864e5, J1970=2440588, J2000=2451545, OBL=rad*23.4397;
@@ -835,7 +847,8 @@ function arTarget(){
   const rs=AR.rs&&AR.rs.rise?moonAt(AR.rs.rise,loc.lat,loc.lng).az:m.az;
   return {az:rs,alt:0,up:false};
 }
-function openAR(){
+function openAR(sat){
+  AR.sat=!!sat; $("satBtn").hidden=false; $("satBtn").textContent="스타링크: "+(AR.sat?"켬":"끔"); if(AR.sat&&!STL.sats&&!STL.busy) stlLoad().catch(e=>{STL.err=e.message||"오류";});
   AR.on=true; AR.sensor=false; AR.absSeen=false; AR.near=false; AR.mt=-1e9; AR.tt=-1e9;
   AR.decl=loc.tz==='Asia/Seoul'?-8:0; $('declVal').textContent=AR.decl+'°';
   $('ar').hidden=false; sizeAR(); setStatus('센서 확인 중'); $('arAim').hidden=true;
@@ -854,7 +867,7 @@ function openAR(){
   requestAnimationFrame(frameAR);
 }
 function closeAR(){recStop(); camOff(); AR.on=false; $('ar').hidden=true; $('arBtn').focus();}
-$('arBtn').onclick=openAR; $('arClose').onclick=closeAR;
+$('arBtn').onclick=()=>openAR(false); $('arClose').onclick=closeAR;
 $('arAim').onclick=aimAtTarget;
 $('declMinus').onclick=()=>{AR.decl-=1; $('declVal').textContent=AR.decl+'°';};
 $('declPlus').onclick=()=>{AR.decl+=1; $('declVal').textContent=AR.decl+'°';};
@@ -945,13 +958,13 @@ function frameAR(t){
   // 달이 지나는 길
   g.fillStyle='rgba(255,230,168,.7)';
   g.textAlign='center'; g.textBaseline='middle';
-  for(const q of AR.trail){ if(!q||AR.simple||SKY.rec) continue; const p=proj(q.v,B); if(!p) continue;
+  for(const q of AR.trail){ if(!q||AR.simple||SKY.rec||AR.sat) continue; const p=proj(q.v,B); if(!p) continue;
     const hr=timeOf(q.t,loc.tz).endsWith(':00');
     g.beginPath(); g.arc(p[0],p[1],hr?3.6:1.8,0,6.283); g.fill();
     if(hr){ g.font='700 14px "Gowun Dodum", sans-serif'; g.fillStyle='#ffe6a8'; g.fillText(timeOf(q.t,loc.tz),p[0],p[1]-15); g.fillStyle='rgba(255,216,138,.85)'; }
   }
   // 능선을 넘는 순간
-  const nx=(AR.simple||SKY.rec)?null:SKY.next;
+  const nx=(AR.simple||SKY.rec||AR.sat)?null:SKY.next;
   if(nx){
     const sa=skyAlt(nx.az), pr=proj(enu(nx.az,sa),B);
     if(pr){
@@ -963,6 +976,7 @@ function frameAR(t){
     }
   }
 
+  if(AR.sat&&!SKY.rec) stlDraw(g,B);
   // 달 (땅 아래면 아래의 땅이 가려요)
   const mp=proj(enu(m.az,m.alt),B), R=24;
   if(mp&&m.alt>=0&&!(AR.simple||SKY.rec)) drawMoonDisc(g,mp[0],mp[1],R,m,south);
@@ -1003,7 +1017,7 @@ function frameAR(t){
     }
   }
   // 땅 아래 달 / 떠오를 곳 표시
-  if(!tgt.up){
+  if(!tgt.up&&!AR.sat){
     const p=proj(tv,B); if(p){
       g.strokeStyle='#ffd88a'; g.lineWidth=2; g.setLineDash([4,5]); g.beginPath(); g.arc(p[0],p[1],R+4,0,6.283); g.stroke(); g.setLineDash([]);
       g.font='16px "Hi Melody", serif'; g.fillStyle='#ffe6a8'; g.fillText('여기서 떠올라요',p[0],p[1]-R-14);
@@ -1019,7 +1033,7 @@ function frameAR(t){
   // 화면 밖이면 화살표
   const tp=proj(tv,B), pad=46;
   const onScreen=tp&&tp[0]>pad&&tp[0]<W-pad&&tp[1]>pad+90&&tp[1]<H-pad;
-  if(!onScreen){
+  if(!onScreen&&!AR.sat){
     const dx=dot(tv,B.r), dy=dot(tv,B.u), ang=Math.atan2(-dy,dx);
     const rx=W/2-34, ry=H/2-150, x=cx+Math.cos(ang)*rx, y=cy+Math.sin(ang)*ry+20;
     g.save(); g.translate(x,y); g.rotate(ang); g.fillStyle='#ffd88a'; g.shadowColor='#ffd88a'; g.shadowBlur=14;
@@ -1028,7 +1042,7 @@ function frameAR(t){
   // 조준점이 달 길 위에 있으면 그 시각
   {
     let bi=-1,bc=-2; AR.trail.forEach((q,i)=>{ if(!q) return; const c=dot(q.v,vf); if(c>bc){bc=c;bi=i;} });
-    if(bi>=0&&bc>Math.cos(9*rad)&&!AR.simple&&!SKY.rec){
+    if(bi>=0&&bc>Math.cos(9*rad)&&!AR.simple&&!SKY.rec&&!AR.sat){
       let bt=AR.trail[bi].t, bb=-2, ba=0, bz=0;
       for(let k=-10;k<=10;k++){const tt=AR.trail[bi].t+k*60000, p=moonAt(tt,loc.lat,loc.lng), c=dot(enu(p.az,p.alt),vf); if(c>bb){bb=c;bt=tt;ba=p.alt;bz=p.az;}}
       const hid=ba+refraction(ba)+0.27<skyAlt(bz);
@@ -1041,7 +1055,7 @@ function frameAR(t){
   }
   // 가운데 조준점
   g.strokeStyle=aligned?'#ffd88a':'rgba(255,243,216,.5)'; g.lineWidth=aligned?3:1.5; g.beginPath(); g.arc(cx,cy,aligned?22:10,0,6.283); g.stroke();
-  if(aligned&&!AR.near){try{navigator.vibrate&&navigator.vibrate(40);}catch(e){}}
+  if(aligned&&!AR.sat&&!AR.near){try{navigator.vibrate&&navigator.vibrate(40);}catch(e){}}
   AR.near=aligned;
   if(SKY.rec&&AR.sensor){const bi=Math.round(viewAz)%360, v=Math.round(clamp(viewAlt,-5,85)*10)/10; if(SKY.bins[bi]!==v){SKY.bins[bi]=v; skyCount();}}
 
@@ -1065,6 +1079,7 @@ function frameAR(t){
     txt=`달은 아직 땅 아래예요. ${rt?`<b>${rt}</b>쯤 `:''}<b>${dirName(tgt.az)} ${Math.round(tgt.az)}°</b>에서 떠올라요. ${aligned?'<b>바로 그 방향이에요!</b>':`<b>${dAz>=0?'오른쪽':'왼쪽'}으로 ${as}°</b> 돌려 보세요`}`;
   }
   if(!SKY.rec&&SKY.next) txt+=`<br>다음 달 등장 <b>${timeOf(SKY.next.t,loc.tz)}</b> (${dayWord(dayDiff(SKY.next.t,Date.now(),loc.tz))}, 초록 점선 자리)`;
+  if(AR.sat) txt=stlHud();
   if(SKY.rec) txt=`<b>능선 기록 중</b> · 동그라미를 건물·산 꼭대기선에 맞추고 천천히 돌리세요 (${SKY.n}°/360°)`;
   $('arHud').style.visibility=(AR.simple&&!SKY.rec)?'hidden':'';
   if(txt!==AR.last){$('arHud').innerHTML=txt; AR.last=txt;}
@@ -1158,6 +1173,191 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault(); deferredIn
 window.addEventListener('appinstalled',()=>{ try{window.goatcounter&&window.goatcounter.count({path:'event-install',title:'앱 설치',event:true});}catch(e){} $('installBtn').hidden=true; deferredInstall=null;});
 $('installBtn').onclick=async()=>{ if(!deferredInstall) return; deferredInstall.prompt(); try{await deferredInstall.userChoice;}catch(e){} deferredInstall=null; $('installBtn').hidden=true; };
 try{ if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js'); if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('controllerchange',()=>{ if(!window.__rl){window.__rl=1; location.reload();} }); }catch(e){}
+/* 스타링크 */
+const STL={sats:null,cand:null,fullT:0,passes:[],groups:[],done:false,busy:false,prog:'',err:'',sel:null,live:[],liveT:0,on:false};
+const TLE_URL='https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=tle';
+const stlObs=()=>({longitude:loc.lng*rad,latitude:loc.lat*rad,height:0.05});
+function stlSun(ms){const c=sunC(toDays(ms)); return [Math.cos(c.dec)*Math.cos(c.ra),Math.cos(c.dec)*Math.sin(c.ra),Math.sin(c.dec)];}
+function stlLit(p,s){const d=p.x*s[0]+p.y*s[1]+p.z*s[2]; if(d>0) return true; const px=p.x-d*s[0],py=p.y-d*s[1],pz=p.z-d*s[2]; return Math.hypot(px,py,pz)>6378;}
+function stlLook(rec,ms,obs,sv){
+  const d=new Date(ms), pv=SAT.propagate(rec,d); if(!pv||!pv.position) return null;
+  const la=SAT.ecfToLookAngles(obs,SAT.eciToEcf(pv.position,SAT.gstime(d)));
+  return {az:((la.azimuth/rad)%360+360)%360, el:la.elevation/rad, lit:sv?stlLit(pv.position,sv):false};
+}
+async function stlLoad(){
+  if(STL.sats) return;
+  let txt=null, stale=null;
+  try{const q=JSON.parse(localStorage.getItem('moon-tle')||'null'); if(q&&q.txt){ if(Date.now()-q.at<10*3600e3) txt=q.txt; else stale=q.txt; }}catch(e){}
+  if(!txt){
+    try{
+      const r=await fetch(TLE_URL); if(!r.ok) throw new Error('응답 '+r.status);
+      txt=await r.text(); if(txt.length<5000) throw new Error('자료가 비었어요');
+      try{localStorage.setItem('moon-tle',JSON.stringify({txt,at:Date.now()}));}catch(e){}
+    }catch(e){ if(stale) txt=stale; else throw e; }
+  }
+  const L=txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean), out=[];
+  for(let i=0;i+2<L.length;i+=3){ if(L[i+1][0]!=='1'||L[i+2][0]!=='2') continue; try{const rec=SAT.twoline2satrec(L[i+1],L[i+2]); if(!rec.error) out.push({n:L[i],rec});}catch(e){} }
+  if(out.length<50) throw new Error('위성 자료가 너무 적어요');
+  STL.sats=out;
+}
+STL.wx=null; STL.wxErr='';
+async function stlWeather(){
+  try{
+    const u='https://api.open-meteo.com/v1/forecast?latitude='+loc.lat.toFixed(3)+'&longitude='+loc.lng.toFixed(3)+'&hourly=cloud_cover,precipitation_probability&forecast_days=7&timezone='+encodeURIComponent(loc.tz||'auto');
+    const r=await fetch(u); if(!r.ok) throw new Error('날씨 응답 '+r.status); const j=await r.json(), h=j.hourly, m={};
+    for(let i=0;i<h.time.length;i++) m[h.time[i]]={c:h.cloud_cover[i],p:h.precipitation_probability[i]||0};
+    STL.wx=m; STL.wxErr='';
+  }catch(e){STL.wx=null; STL.wxErr=(e&&e.message)||'날씨 오류';}
+}
+const stlKey=ms=>ymd(ms,loc.tz)+'T'+timeOf(ms,loc.tz).slice(0,2)+':00';
+function stlCloud(ms){const w=STL.wx&&STL.wx[stlKey(ms)]; return w?w:null;}
+function stlVerdict(w){ if(!w) return null; if(w.p>=50) return {t:'비 예보',c:'#f6adc4',bad:1}; if(w.c<=30) return {t:'맑아서 잘 보여요',c:'#b9ffe9'}; if(w.c<=60) return {t:'구름 사이로 보일 수 있어요',c:'#ffe6a8'}; return {t:'흐려서 관측이 어려워요',c:'#f6adc4',bad:1}; }
+function stlDays(){
+  if(!STL.wx) return [];
+  const days={};
+  for(const k in STL.wx){
+    const d=k.slice(0,10), hh=+k.slice(11,13); if(!(hh<9||hh>=15)) continue;
+    const t=localMs(k); const h=sunAltAt(t+1800000,loc.lat,loc.lng); if(h>-4||h<-23) continue;
+    (days[d]=days[d]||{ev:[],mo:[]})[hh>=12?'ev':'mo'].push(STL.wx[k]);
+  }
+  return Object.keys(days).sort().map(d=>{
+    const q=days[d], avg=a=>a.length?a.reduce((x,y)=>x+y.c,0)/a.length:null, pr=a=>a.length?Math.max(...a.map(y=>y.p)):0;
+    const ev=q.ev, c=avg(ev), p=pr(ev);
+    return {d,c,p,mo:avg(q.mo),n:ev.length};
+  });
+}
+function localMs(k){ // 'YYYY-MM-DDTHH:00' 현지 시각 → 실제 시각(ms)
+  const t0=Date.parse(k+':00Z'); let r=t0;
+  for(let n=0;n<2;n++){ const off=Date.parse(stlKey(r)+':00Z')-r; r=t0-off; } return r;
+}
+const stlNap=()=>new Promise(r=>setTimeout(r,0));
+function stlMinEl(az){return SKY.n>0?Math.max(5,skyAlt(az)+1):10;}
+async function stlCompute(){
+  if(STL.busy) return; STL.busy=true; STL.err=''; STL.prog='위성 정보를 가져오는 중…'; stlRender();
+  try{
+    const wp=stlWeather(); await stlLoad(); await wp;
+    const {lat,lng}=loc, obs=stlObs(), t0=Math.ceil(Date.now()/60000)*60000, tEnd=t0+24*3600e3, step=120000;
+    const times=[];
+    for(let t=t0;t<=tEnd;t+=step){const h=sunAltAt(t,lat,lng); if(h<-4&&h>-21) times.push(t);}
+    const hits=new Map();
+    for(let k=0;k<times.length;k++){
+      const t=times[k], d=new Date(t), gm=SAT.gstime(d), sv=stlSun(t);
+      for(let i=0;i<STL.sats.length;i++){
+        const pv=SAT.propagate(STL.sats[i].rec,d); if(!pv||!pv.position) continue;
+        const la=SAT.ecfToLookAngles(obs,SAT.eciToEcf(pv.position,gm));
+        if(la.elevation>0&&stlLit(pv.position,sv)){ let a=hits.get(i); if(!a){a=[];hits.set(i,a);} a.push(t); }
+      }
+      STL.prog=`하늘을 훑어보는 중… ${Math.round((k+1)/times.length*100)}%`; stlRender(); await stlNap();
+    }
+    STL.prog='지나가는 길을 다듬는 중…'; stlRender(); await stlNap();
+    const passes=[];
+    for(const [i,ts] of hits){
+      const rec=STL.sats[i].rec; let a=0;
+      while(a<ts.length){
+        let b=a; while(b+1<ts.length&&ts[b+1]-ts[b]<=step*2) b++;
+        const from=ts[a]-110000, to=ts[b]+110000; let seg=[];
+        const flush=()=>{ if(seg.length>=3){ let pk=seg[0]; for(const s of seg) if(s[2]>pk[2]) pk=s;
+          passes.push({n:STL.sats[i].n,s:seg[0],e:seg[seg.length-1],pk,path:seg.filter((_,j)=>j%2===0||j===seg.length-1)}); } seg=[]; };
+        for(let t=from;t<=to;t+=5000){
+          const h=sunAltAt(t,lat,lng), q=h<-4?stlLook(rec,t,obs,stlSun(t)):null;
+          if(q&&q.lit&&q.el>=stlMinEl(q.az)) seg.push([t,q.az,q.el]); else flush();
+        }
+        flush(); a=b+1;
+      }
+    }
+    passes.sort((x,y)=>x.pk[0]-y.pk[0]);
+    const groups=[];
+    for(const p of passes){
+      const g=groups[groups.length-1];
+      if(g&&p.pk[0]-g.last<=150000&&Math.abs(((p.s[1]-g.items[0].s[1]+540)%360)-180)<=30){ g.items.push(p); g.last=p.pk[0]; }
+      else groups.push({items:[p],last:p.pk[0]});
+    }
+    STL.groups=groups.map(g=>{
+      const it=g.items, f=it.reduce((m,p)=>p.s[0]<m.s[0]?p:m,it[0]), l=it.reduce((m,p)=>p.e[0]>m.e[0]?p:m,it[0]), pk=it.reduce((m,p)=>p.pk[2]>m.pk[2]?p:m,it[0]);
+      const pick=it.length<=5?it:[0,1,2,3,4].map(j=>it[Math.round(j*(it.length-1)/4)]);
+      return {n:it.length,name:it[0].n,s:f.s,e:l.e,pk:pk.pk,paths:pick.map(p=>p.path)};
+    }).filter(g=>g.e[0]>Date.now());
+    STL.done=true; STL.prog='';
+  }catch(e){ STL.err=(e&&e.message)||'알 수 없는 오류'; STL.prog=''; }
+  STL.busy=false; stlRender();
+}
+function stlWhen(g){const w=dayWord(dayDiff(g.s[0],Date.now(),loc.tz)); return w+' '+timeOf(g.s[0],loc.tz);}
+function stlRender(){
+  const info=$('stlInfo'), ol=$('stlList'); if(!info) return;
+  $('stlFind').disabled=STL.busy; $('stlFind').textContent=STL.busy?'계산 중…':(STL.done?'다시 계산하기':'지나가는 시간 찾기');
+  $('stlAr').hidden=false;
+  stlRenderWx();
+  if(STL.busy){info.textContent=STL.prog; return;}
+  if(STL.err){info.textContent='위성 정보를 가져오지 못했어요 ('+STL.err+'). 인터넷이 연결돼 있는지 확인하고 다시 눌러 주세요.'; ol.innerHTML=''; return;}
+  if(!STL.done){info.textContent='스타링크 위성이 줄지어 지나가는 시각과 방향을 계산해요. 해가 진 뒤(또는 해 뜨기 전)에 햇빛을 받는 위성만 보여요. '+(SKY.n>0?'기록한 능선을 반영해요.':'능선을 기록하면 건물·산에 가려지는 것까지 반영해요.'); ol.innerHTML=''; return;}
+  info.textContent=(SKY.n>0?'기록한 능선을 반영한 ':'평지 기준(높이 10° 이상) ')+'앞으로 24시간 관측 후보예요. 맑은 날 해 진 직후가 가장 잘 보여요. 구름은 계산에 넣지 않았어요.';
+  let h=''; const arr=[]; for(const g of STL.groups){ if(g.e[0]<=Date.now()||!(g.pk[2]>=30||g.n>=3)) continue; const l=arr[arr.length-1]; if(l&&g.s[0]-l.s[0]<240000) continue; arr.push(g); if(arr.length>=8) break; }
+  arr.forEach((g,i)=>{
+    const dur=Math.max(1,Math.round((g.e[0]-g.s[0])/1000)), w=stlCloud(g.pk[0]), wv=stlVerdict(w);
+    h+=`<li data-i="${i}" style="cursor:pointer"><b>${timeOf(g.s[0],loc.tz)}</b><span>${stlWhen(g).split(' ')[0]} · ${g.n>1?g.n+'대 줄지어':'위성 1대'}<br>${dirName(g.s[1])}→${dirName(g.e[1])} · 최고 ${Math.round(g.pk[2])}° · ${dur}초${wv?`<br><i style="font-style:normal;color:${wv.c}">${wv.t} (구름 ${Math.round(w.c)}%)</i>`:''}</span></li>`;
+  });
+  ol.innerHTML=h||'<li><span>앞으로 24시간 동안 이 자리에서 볼 만한 통과가 없어요.</span></li>';
+  ol.querySelectorAll('li[data-i]').forEach(li=>li.onclick=()=>{STL.sel=arr[+li.dataset.i]; stlOpenAR();});
+}
+function stlRenderWx(){
+  const wx=$('stlWx'), ol=$('stlDays'); if(!wx) return;
+  const D=stlDays();
+  if(!D.length){ wx.textContent=STL.wxErr?'날씨를 못 가져왔어요 ('+STL.wxErr+'). 구름 정보 없이 계산해요.':'날씨를 불러오는 중이에요…'; ol.innerHTML=''; return; }
+  const today=ymd(Date.now(),loc.tz), first=D.find(x=>x.d>=today&&x.n>0);
+  const v=first?stlVerdict({c:first.c,p:first.p}):null;
+  wx.innerHTML=v?(v.bad?`<b style="color:${v.c}">${dayWord(dayDiff(Date.parse(first.d+'T12:00:00Z'),Date.parse(today+'T12:00:00Z'),'UTC'))} 저녁은 ${v.t}.</b> 구름이 많거나 비가 오면 위성이 가려져요.`:`${dayWord(dayDiff(Date.parse(first.d+'T12:00:00Z'),Date.parse(today+'T12:00:00Z'),'UTC'))} 저녁: <b style="color:${v.c}">${v.t}</b>`):'';
+  ol.innerHTML=D.filter(x=>x.d>=today&&x.n>0).map(x=>{const vv=stlVerdict({c:x.c,p:x.p}), dt=Date.parse(x.d+'T12:00:00Z'), w=dayWord(dayDiff(dt,Date.parse(today+'T12:00:00Z'),'UTC')), md=(+x.d.slice(5,7))+'/'+(+x.d.slice(8,10));
+    return `<li><b style="font-size:17px">${md}</b><span>${w} 저녁 · <i style="font-style:normal;color:${vv.c}">${vv.t}</i><br>구름 ${Math.round(x.c)}%${x.p>=30?' · 비 '+x.p+'%':''}</span></li>`;}).join('');
+}
+function stlLive(){
+  const now=Date.now(), d=new Date(now), gm=SAT.gstime(d), obs=stlObs(), sv=stlSun(now);
+  const full=!STL.cand||now-STL.fullT>60000, src=full?STL.sats:STL.cand, cand=[], out=[];
+  for(const s of src){
+    const pv=SAT.propagate(s.rec,d); if(!pv||!pv.position) continue;
+    const la=SAT.ecfToLookAngles(obs,SAT.eciToEcf(pv.position,gm)), el=la.elevation/rad;
+    if(full&&la.rangeSat<4500&&el>-25) cand.push(s);
+    if(el>0) out.push({az:((la.azimuth/rad)%360+360)%360,el,lit:stlLit(pv.position,sv)});
+  }
+  if(full){STL.cand=cand; STL.fullT=now;} STL.live=out; STL.liveT=now;
+}
+function stlDraw(g,B){
+  if(STL.sats&&Date.now()-STL.liveT>(STL.cand?1000:0)){ try{stlLive();}catch(e){} }
+  const dark=sunAltAt(Date.now(),loc.lat,loc.lng)<-4;
+  g.save(); g.textAlign='center'; g.textBaseline='middle';
+  const gp=STL.sel;
+  if(gp){
+    g.strokeStyle='rgba(127,240,208,.8)'; g.setLineDash([6,6]);
+    gp.paths.forEach((P,k)=>{ g.lineWidth=k===0?2.5:1.5; g.beginPath(); let pen=false;
+      for(const s of P){const p=proj(enu(s[1],s[2]),B); if(!p){pen=false;continue;} if(pen) g.lineTo(p[0],p[1]); else{g.moveTo(p[0],p[1]);pen=true;}}
+      g.stroke(); });
+    g.setLineDash([]);
+    const mk=(s,txt,col)=>{const p=proj(enu(s[1],s[2]),B); if(!p) return; g.fillStyle=col; g.beginPath(); g.arc(p[0],p[1],5,0,6.283); g.fill(); g.font='700 14px "Gowun Dodum", sans-serif'; g.fillText(txt,p[0],p[1]-16);};
+    mk(gp.s,timeOf(gp.s[0],loc.tz)+' 나타남','#b9ffe9'); mk(gp.pk,timeOf(gp.pk[0],loc.tz)+' 최고 '+Math.round(gp.pk[2])+'°','#ffe6a8'); mk(gp.e,timeOf(gp.e[0],loc.tz)+' 사라짐','#f6adc4');
+  }
+  for(const s of STL.live){
+    if(dark&&!s.lit) continue; const p=proj(enu(s.az,s.el),B); if(!p) continue;
+    g.fillStyle=s.lit?'#fffbe0':'rgba(200,200,220,.35)'; g.shadowColor='#fff3a0'; g.shadowBlur=s.lit?10:0; g.beginPath(); g.arc(p[0],p[1],s.lit?3.2:2,0,6.283); g.fill();
+  }
+  g.restore();
+}
+function stlHud(){
+  if(STL.err) return '위성 정보를 못 가져왔어요 ('+STL.err+')';
+  if(!STL.sats) return '스타링크 정보를 가져오는 중이에요…';
+  const dark=sunAltAt(Date.now(),loc.lat,loc.lng)<-4, n=STL.live.filter(s=>s.lit&&s.el>5).length;
+  let t=dark?`지금 하늘 위 햇빛 받는 스타링크 <b>${n}대</b> (흰 점)`:'아직 밝아서 위성이 안 보여요. 해가 진 뒤에 다시 보세요';
+  const g=STL.sel||STL.groups.find(x=>x.e[0]>Date.now());
+  if(g) t+=`<br>${STL.sel?'선택한':'다음'} 통과 <b>${stlWhen(g)}</b> · ${dirName(g.s[1])}→${dirName(g.e[1])} · 최고 <b>${Math.round(g.pk[2])}°</b>${g.n>1?' · '+g.n+'대 줄지어':''} (초록 점선)`;
+  else if(STL.done) t+='<br>앞으로 24시간 관측 후보가 없어요';
+  else t+='<br>시간표는 메인 화면의 "지나가는 시간 찾기"로 계산해요';
+  if(g){const wv=stlVerdict(stlCloud(g.pk[0])); if(wv) t+=`<br><span style="color:${wv.c}">그 시각 날씨: ${wv.t}</span>`;}
+  return t;
+}
+function stlOpenAR(){ openAR(true); }
+$('stlFind').onclick=stlCompute;
+$('stlAr').onclick=()=>{STL.sel=null; stlOpenAR();};
+$('satBtn').onclick=()=>{AR.sat=!AR.sat; $('satBtn').textContent='스타링크: '+(AR.sat?'켬':'끔'); if(AR.sat&&!STL.sats&&!STL.busy) stlLoad().then(()=>AR.on&&0).catch(e=>{STL.err=e.message||'오류';});};
+stlRender(); stlWeather().then(stlRender);
+
 /* 시작 */
 function start(d){
   if(d&&d.loc&&isFinite(d.loc.lat)) loc=d.loc;
