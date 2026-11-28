@@ -327,7 +327,7 @@ input[type=range]{width:100%;margin:14px 0 4px;accent-color:#ffc9e0;height:28px}
     </section>
 
 
-    <p class="note">하늘 지도는 가운데가 머리 위, 바깥 원이 지평선이에요. 점선은 앞뒤 12시간 동안 달이 지나는 길이고, 폰 센서가 켜지면 지도가 내가 보는 방향으로 돌아가요. 월출·월몰은 몇 분 차이가 날 수 있고 구름은 계산에 넣지 않았어요. (앱 버전 14)</p>
+    <p class="note">하늘 지도는 가운데가 머리 위, 바깥 원이 지평선이에요. 점선은 앞뒤 12시간 동안 달이 지나는 길이고, 폰 센서가 켜지면 지도가 내가 보는 방향으로 돌아가요. 월출·월몰은 몇 분 차이가 날 수 있고 구름은 계산에 넣지 않았어요. (앱 버전 15) 방문 수만 익명으로 세고, 위치·능선 기록은 내 폰에만 저장돼요.</p>
   </main>
 </div>
 
@@ -1155,7 +1155,7 @@ $('skyClear').onclick=()=>{SKY.bins.fill(null); skySave(); renderSky(); toast('�
 /* 앱 설치(PWA) */
 let deferredInstall=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault(); deferredInstall=e; $('installBtn').hidden=false;});
-window.addEventListener('appinstalled',()=>{$('installBtn').hidden=true; deferredInstall=null;});
+window.addEventListener('appinstalled',()=>{ try{window.goatcounter&&window.goatcounter.count({path:'event-install',title:'앱 설치',event:true});}catch(e){} $('installBtn').hidden=true; deferredInstall=null;});
 $('installBtn').onclick=async()=>{ if(!deferredInstall) return; deferredInstall.prompt(); try{await deferredInstall.userChoice;}catch(e){} deferredInstall=null; $('installBtn').hidden=true; };
 try{ if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js'); if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('controllerchange',()=>{ if(!window.__rl){window.__rl=1; location.reload();} }); }catch(e){}
 /* 시작 */
@@ -1170,5 +1170,6 @@ function start(d){
 try{window.claude?.hot?.snapshot?.(()=>({loc}));}catch(e){}
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 </script>
+<script data-goatcounter="https://dalmaji.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>
