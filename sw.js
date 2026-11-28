@@ -1,5 +1,5 @@
-const C='dalmaji-v17';
-const FILES=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./sat.min.js'];
+const C='dalmaji-v16';
+const FILES=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',e=>{
