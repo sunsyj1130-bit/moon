@@ -329,7 +329,7 @@ input[type=range]{width:100%;margin:14px 0 4px;accent-color:#ffc9e0;height:28px}
       <ol id="stlDays"></ol>
       <ol id="stlList"></ol>
       <button class="glow-btn" id="stlFind" type="button">지나가는 시간 찾기</button>
-      <div class="row" style="justify-content:center"><button class="ghost" id="stlAr" type="button">3D 센서 화면으로 보기</button><button class="ghost" id="stlRec" type="button">능선 기록하기</button></div>
+      <div class="row" style="justify-content:center"><button class="ghost" id="stlAr" type="button">3D 센서 화면으로 보기</button><button class="ghost" id="stlRec" type="button">능선 기록하기</button><button class="ghost" id="stlInstall" type="button" hidden>앱으로 설치하기</button></div>
     </section>
 
     <section class="sky glass" id="skyCard" aria-label="내 자리에서 달 보기">
@@ -1358,6 +1358,15 @@ function stlHud(){
 }
 function stlOpenAR(){ openAR(true); }
 $('stlFind').onclick=stlCompute;
+(function(){
+  const b=$('stlInstall'), standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+  if(!standalone) b.hidden=false;
+  b.onclick=async()=>{
+    if(deferredInstall){ deferredInstall.prompt(); try{await deferredInstall.userChoice;}catch(e){} deferredInstall=null; return; }
+    toast('Chrome 오른쪽 위 ⋮ 메뉴에서 "앱 설치" 또는 "홈 화면에 추가"를 눌러 주세요.');
+  };
+  addEventListener('appinstalled',()=>{b.hidden=true;});
+})();
 $('stlRec').onclick=()=>{STL.sel=null; openAR(true); camOn();};
 $('stlAr').onclick=()=>{STL.sel=null; stlOpenAR();};
 $('satBtn').onclick=()=>{AR.sat=!AR.sat; $('satBtn').textContent='스타링크: '+(AR.sat?'켬':'끔'); if(AR.sat&&!STL.sats&&!STL.busy) stlLoad().then(()=>AR.on&&0).catch(e=>{STL.err=e.message||'오류';});};
