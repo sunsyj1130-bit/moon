@@ -231,6 +231,11 @@ input[type=range]{width:100%;margin:14px 0 4px;accent-color:#ffc9e0;height:28px}
         <div><b id="altV">-</b><span>높이</span></div>
         <div><b id="fistV">-</b><span>주먹 개수</span></div>
       </div>
+    <section class="scrub glass" aria-label="시간 이동">
+      <div class="scrub-head"><span class="k">시간을 넘겨 보기</span><span id="scrubLabel">지금</span></div>
+      <input type="range" id="scrub" min="-720" max="720" step="15" value="0" aria-label="현재 시각에서 앞뒤로 12시간까지 이동">
+      <div class="ticks"><span>12시간 전</span><button class="ghost" id="nowBtn" type="button">지금으로</button><span>12시간 뒤</span></div>
+    </section>
       <button class="glow-btn" id="arBtn" type="button">나침반으로 달 찾기</button>
       <button class="ghost" id="installBtn" type="button" hidden style="margin-top:12px">앱으로 설치하기</button>
     </section>
@@ -321,13 +326,8 @@ input[type=range]{width:100%;margin:14px 0 4px;accent-color:#ffc9e0;height:28px}
       <div class="row" style="justify-content:center"><button class="ghost" id="skyClear" type="button" hidden>기록 지우기</button></div>
     </section>
 
-    <section class="scrub glass" aria-label="시간 이동">
-      <div class="scrub-head"><span class="k">시간을 넘겨 보기</span><span id="scrubLabel">지금</span></div>
-      <input type="range" id="scrub" min="-720" max="720" step="15" value="0" aria-label="현재 시각에서 앞뒤로 12시간까지 이동">
-      <div class="ticks"><span>12시간 전</span><button class="ghost" id="nowBtn" type="button">지금으로</button><span>12시간 뒤</span></div>
-    </section>
 
-    <p class="note">하늘 지도는 가운데가 머리 위, 바깥 원이 지평선이에요. 점선은 앞뒤 12시간 동안 달이 지나는 길이고, 폰 센서가 켜지면 지도가 내가 보는 방향으로 돌아가요. 월출·월몰은 몇 분 차이가 날 수 있고 구름은 계산에 넣지 않았어요. (앱 버전 13)</p>
+    <p class="note">하늘 지도는 가운데가 머리 위, 바깥 원이 지평선이에요. 점선은 앞뒤 12시간 동안 달이 지나는 길이고, 폰 센서가 켜지면 지도가 내가 보는 방향으로 돌아가요. 월출·월몰은 몇 분 차이가 날 수 있고 구름은 계산에 넣지 않았어요. (앱 버전 14)</p>
   </main>
 </div>
 
